@@ -2,6 +2,11 @@ backend/test_apis/test_whale_alert.py
 
 import requests
 import json
+import os
+from dotenv import load_dotenv
+
+load_dotenv
+API_KEY = os.getenv('WHALE_ALERT_KEY')
 
 def test_whale_alert():
     """Test Whale Alert API"""
@@ -13,7 +18,7 @@ def test_whale_alert():
     url = "https://api.whale-alert.io/v1/transactions"
     
     # You can sign up for free API key at whale-alert.io
-    API_KEY = "your_whale_alert_key"  # Optional for testing
+   # API_KEY = "your_whale_alert_key"  # Optional for testing
     
     params = {
         "api_key": API_KEY,
