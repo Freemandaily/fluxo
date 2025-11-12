@@ -3,7 +3,7 @@ from redis.asyncio import Redis
 
 
 class db_connector:
-    def _init_(self, max_connections=3):
+    def __init__(self, max_connections=3):
         # Import Settings here to avoid circular import at module level
         from core.config import Settings
         settings = Settings()
