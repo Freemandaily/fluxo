@@ -3,7 +3,7 @@ Macro Market Analysis Celery Task - With Alert Triggering
 """
 from core import celery_app
 import asyncio
-from agents.macro_agent import MacroAgent
+from agents.macro_agent import macro_agent as MacroAgent
 from services.alert_manager import AlertManager
 
 
