@@ -27,5 +27,5 @@ __all__ = [
     'x402_router',
     'yield_router',
     'social_router',
-    'alert_router'
+    'alerts_router'
 ]
