@@ -63,7 +63,7 @@ app.include_router(execution_router,prefix='/agent')
 app.include_router(governance_router,prefix='/agent')
 app.include_router(macro_router,prefix='/agent')
 app.include_router(market_data_router,prefix='/agent')
-app.include_router(portfolio_router,prefix='/agent')
+#app.include_router(portfolio_router,prefix='/agent')
 app.include_router(research_router,prefix='/agent')
 app.include_router(risk_router,prefix='/agent')
 app.include_router(x402_router,prefix='/agent')
@@ -71,6 +71,7 @@ app.include_router(onchain_router,prefix='/agent')
 app.include_router(yield_router,prefix='/agent')
 app.include_router(social_router,prefix='/agent')
 app.include_router(alerts_router, prefix="/api/alerts", tags=["Alerts"])
+app.include_router(portfolio_router, prefix="/api/v1/agent/portfolio", tags=["portfolio"])
 
 
 # CORS middleware
