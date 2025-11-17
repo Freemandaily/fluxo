@@ -1,12 +1,13 @@
 """
 Fluxo Risk Agent - Enhanced Portfolio Risk Scoring Engine
-Analyzes concentration, liquidity, volatility, and contract risk
+Analyzes concentration, liquidity, volatility, contract risk, and audits
 
 Week 2 Enhancement:
 - Integrated Kelvin's Mantle protocol risk parameters
 - Added correlation-based risk (from Kelvin's macro hypothesis)
 - Improved liquidity scoring with real DEX data
 - Enhanced contract risk with protocol safety scores
+- Added audit feed integration for contract security
 """
 
 from typing import Dict, List, Optional, Tuple
@@ -14,16 +15,18 @@ from datetime import datetime, UTC
 import logging
 from pydantic import BaseModel
 from enum import Enum
+from services.audit_feed_service import get_audit_service
+
 
 logger = logging.getLogger(__name__)
 
 
 class ProtocolRiskLevel(str, Enum):
     """Protocol safety classification based on Kelvin's research"""
-    BLUE_CHIP = "blue_chip"      # Top tier (Uniswap, established)
-    ESTABLISHED = "established"   # Well-known (Merchant Moe, FusionX)
-    EMERGING = "emerging"         # Newer (Agni, TropicalSwap)
-    UNVERIFIED = "unverified"     # Unknown/no audit
+    BLUE_CHIP = "blue_chip"
+    ESTABLISHED = "established"
+    EMERGING = "emerging"
+    UNVERIFIED = "unverified"
 
 
 class PortfolioAsset(BaseModel):
@@ -33,7 +36,7 @@ class PortfolioAsset(BaseModel):
     balance: float
     usd_value: float
     percentage_of_portfolio: float
-    protocol: Optional[str] = None  # Which protocol/DEX (if applicable)
+    protocol: Optional[str] = None
 
 
 class RiskMetrics(BaseModel):
@@ -42,7 +45,7 @@ class RiskMetrics(BaseModel):
     liquidity_score: float
     volatility_score: float
     contract_risk_score: float
-    correlation_risk_score: float  # NEW: From Kelvin's hypothesis
+    correlation_risk_score: float
     overall_score: float
 
 
@@ -59,49 +62,36 @@ class RiskScore(BaseModel):
     level: RiskLevel
     factors: Dict[str, float]
     recommendations: List[str]
-    market_condition: str  # NEW: Based on correlation
+    market_condition: str
     timestamp: datetime
 
 
 class RiskAgent:
-    """
-    Enhanced Risk Analysis Engine with Kelvin's Research
-    
-    Enhancements:
-    1. Correlation-based market risk (Kelvin's macro hypothesis)
-    2. Mantle protocol risk parameters (Kelvin's DEX data)
-    3. Improved liquidity scoring
-    4. Protocol safety classifications
-    """
+    """Enhanced Risk Analysis Engine with Audit Integration"""
     
     def __init__(self):
-        # Risk score weights (optimized based on Electus's feedback)
+        # Risk score weights
         self.weights = {
-            "concentration": 0.30,   # Reduced slightly
+            "concentration": 0.30,
             "liquidity": 0.25,
             "volatility": 0.20,
             "contract": 0.15,
-            "correlation": 0.10      # NEW: Market correlation risk
+            "correlation": 0.10
         }
         
-        # Kelvin's Mantle Protocol Safety Tiers
+        # Protocol safety tiers
         self.protocol_tiers = {
-            # Blue Chip - Highest safety
             "uniswap": ProtocolRiskLevel.BLUE_CHIP,
-            
-            # Established - Major Mantle DEXs (from Kelvin's data)
             "merchant_moe": ProtocolRiskLevel.ESTABLISHED,
             "fusionx": ProtocolRiskLevel.ESTABLISHED,
             "agni_finance": ProtocolRiskLevel.ESTABLISHED,
-            
-            # Emerging - Newer protocols
             "tropicalswap": ProtocolRiskLevel.EMERGING,
             "clipper_dex": ProtocolRiskLevel.EMERGING,
             "carbon_defi": ProtocolRiskLevel.EMERGING,
             "swaap": ProtocolRiskLevel.EMERGING,
         }
         
-        # Protocol Risk Scores (0-100, lower = safer)
+        # Protocol risk scores
         self.protocol_risk_scores = {
             ProtocolRiskLevel.BLUE_CHIP: 5,
             ProtocolRiskLevel.ESTABLISHED: 15,
@@ -109,11 +99,11 @@ class RiskAgent:
             ProtocolRiskLevel.UNVERIFIED: 80
         }
         
-        # Liquidity Tiers (from Kelvin's DEX data - TVL indicators)
+        # Liquidity tiers
         self.liquidity_tiers = {
-            "merchant_moe": "high",      # Major Mantle DEX
-            "fusionx": "high",           # Major Mantle DEX
-            "uniswap": "very_high",      # Blue chip
+            "merchant_moe": "high",
+            "fusionx": "high",
+            "uniswap": "very_high",
             "agni_finance": "medium",
             "tropicalswap": "medium",
             "clipper_dex": "low",
@@ -121,181 +111,219 @@ class RiskAgent:
             "swaap": "medium"
         }
         
-        # Correlation Risk Thresholds (from Kelvin's macro hypothesis)
+        # Correlation thresholds
         self.correlation_thresholds = {
-            "healthy": 0.4,        # Below = healthy, selective market
-            "neutral": 0.7,        # 0.4-0.7 = neutral/consolidating
-            "stressed": 1.0        # Above 0.7 = fear/herd behavior
+            "healthy": 0.4,
+            "neutral": 0.7,
+            "stressed": 1.0
         }
         
         # Base thresholds
         self.thresholds = {
-            "high_concentration": 40,      # % in single asset
-            "very_high_concentration": 60, # Critical concentration
-            "low_liquidity_usd": 100000,  # Below = high risk
-            "high_volatility": 0.05,       # Daily 5% = high vol
-            "min_diversification": 3       # Minimum # of assets
+            "high_concentration": 40,
+            "very_high_concentration": 60,
+            "low_liquidity_usd": 100000,
+            "high_volatility": 0.05,
+            "min_diversification": 3
         }
     
-    async def analyze_portfolio(
+    def analyze_portfolio(
         self, 
-        wallet_address: str,
-        market_correlation: Optional[float] = None  # NEW: Pass from Macro Agent
-    ) -> RiskScore:
+        portfolio: Dict,
+        market_correlation: Optional[float] = None
+    ) -> Dict:
         """
-        Enhanced portfolio risk analysis
+        Synchronous portfolio risk analysis
         
         Args:
-            wallet_address: Wallet to analyze
-            market_correlation: Current BTC/market correlation (0-1)
-                               From Macro Agent based on Kelvin's hypothesis
+            portfolio: Portfolio data with holdings
+            market_correlation: Market correlation (0-1)
+            
+        Returns:
+            Risk analysis dictionary
         """
         try:
-            # Fetch portfolio data
-            assets = await self._fetch_portfolio_assets(wallet_address)
+            # Extract wallet address
+            wallet_address = portfolio.get("wallet", "unknown")
             
-            if not assets:
-                return self._create_empty_risk_score()
+            # Mock assets for now
+            assets = [
+                PortfolioAsset(
+                    token_symbol="mETH",
+                    token_address="0x...",
+                    balance=10.5,
+                    usd_value=35000,
+                    percentage_of_portfolio=70,
+                    protocol="merchant_moe"
+                ),
+                PortfolioAsset(
+                    token_symbol="USDC",
+                    token_address="0x...",
+                    balance=10000,
+                    usd_value=10000,
+                    percentage_of_portfolio=20,
+                    protocol="fusionx"
+                ),
+                PortfolioAsset(
+                    token_symbol="MNT",
+                    token_address="0x...",
+                    balance=5000,
+                    usd_value=5000,
+                    percentage_of_portfolio=10,
+                    protocol=None
+                )
+            ]
             
-            # Calculate all risk metrics
+            # Calculate risk metrics
             concentration = self._calculate_concentration(assets)
-            liquidity = await self._calculate_liquidity(assets)
-            volatility = await self._calculate_volatility(assets)
-            contract_risk = await self._calculate_contract_risk(assets)
+            liquidity = self._calculate_liquidity_sync(assets)
+            volatility = self._calculate_volatility_sync(assets)
+            contract_risk = self._calculate_contract_risk_sync(assets)
             
-            # NEW: Correlation risk (from Kelvin's macro hypothesis)
             correlation_risk, market_condition = self._calculate_correlation_risk(
-                market_correlation or 0.5  # Default to neutral if not provided
+                market_correlation or 0.5
             )
             
-            # Build metrics object
+            # Build metrics
             metrics = RiskMetrics(
                 concentration_score=concentration,
                 liquidity_score=liquidity,
                 volatility_score=volatility,
                 contract_risk_score=contract_risk,
                 correlation_risk_score=correlation_risk,
-                overall_score=0  # Calculated next
+                overall_score=0
             )
             
-            # Compute weighted overall score
             overall_score = self._compute_overall_score(metrics)
             metrics.overall_score = overall_score
             
-            # Determine risk level
             risk_level = self._get_risk_level(overall_score)
+            recommendations = self._generate_recommendations(metrics, assets, market_condition)
             
-            # Generate recommendations (now includes correlation context)
-            recommendations = self._generate_recommendations(
-                metrics, 
-                assets, 
-                market_condition
-            )
-            
-            # Build final risk score
-            risk_score = RiskScore(
-                score=overall_score,
-                level=risk_level,
-                factors={
-                    "concentration": metrics.concentration_score,
-                    "liquidity": metrics.liquidity_score,
-                    "volatility": metrics.volatility_score,
-                    "contract_risk": metrics.contract_risk_score,
-                    "correlation_risk": metrics.correlation_risk_score
-                },
-                recommendations=recommendations,
-                market_condition=market_condition,
-                timestamp=datetime.now(UTC)
-            )
-            
-            logger.info(
-                f"Risk analysis completed: {risk_level.value} ({overall_score:.1f}) "
-                f"Market: {market_condition}"
-            )
-            return risk_score
+            return {
+                "wallet_address": wallet_address,
+                "risk_score": overall_score,
+                "risk_level": risk_level.value,
+                "concentration_risk": concentration,
+                "liquidity_score": liquidity,
+                "volatility_score": volatility,
+                "contract_risk": contract_risk,
+                "correlation_risk": correlation_risk,
+                "market_condition": market_condition,
+                "recommendations": recommendations,
+                "top_holdings": [
+                    {
+                        "token": asset.token_symbol,
+                        "percentage": asset.percentage_of_portfolio,
+                        "value_usd": asset.usd_value,
+                        "protocol": asset.protocol
+                    }
+                    for asset in sorted(assets, key=lambda a: a.percentage_of_portfolio, reverse=True)[:3]
+                ],
+                "timestamp": datetime.now(UTC).isoformat()
+            }
             
         except Exception as e:
             logger.error(f"Risk analysis failed: {str(e)}")
             raise
     
-    async def _fetch_portfolio_assets(self, wallet_address: str) -> List[PortfolioAsset]:
+    async def check_contract_risk_with_audits(self, holdings: List[Dict]) -> Dict:
         """
-        Fetch portfolio with protocol information
-        TODO Week 3: Real data from Freeman's data_pipeline
-        """
-
-        """"
-        Check service/datapipeline.py for real implementation
+        Enhanced contract risk check with audit data
         
+        Args:
+            holdings: List of token holdings with protocol info
+            
+        Returns:
+            Contract risk analysis with audit information
         """
-        # Mock portfolio for testing
-        mock_assets = [
-            PortfolioAsset(
-                token_symbol="mETH",
-                token_address="0x...",
-                balance=10.5,
-                usd_value=35000,
-                percentage_of_portfolio=70,
-                protocol="merchant_moe"  # Staked on Merchant Moe
-            ),
-            PortfolioAsset(
-                token_symbol="USDC",
-                token_address="0x...",
-                balance=10000,
-                usd_value=10000,
-                percentage_of_portfolio=20,
-                protocol="fusionx"  # Liquidity on FusionX
-            ),
-            PortfolioAsset(
-                token_symbol="MNT",
-                token_address="0x...",
-                balance=5000,
-                usd_value=5000,
-                percentage_of_portfolio=10,
-                protocol=None  # Held in wallet
-            )
-        ]
-        return mock_assets
+        audit_service = get_audit_service()
+        
+        # Extract protocols
+        protocols = []
+        for holding in holdings:
+            protocol = holding.get('protocol', '').lower()
+            if protocol:
+                protocols.append(protocol)
+        
+        # Get audit information
+        audits = await audit_service.get_multiple_audits(protocols)
+        
+        # Calculate risk scores
+        risk_scores = []
+        critical_findings = []
+        
+        for protocol, audit_info in audits.items():
+            if audit_info["audit_status"] == "audited":
+                audit_data = audit_info["audit_data"]
+                
+                # Check critical issues
+                if audit_data.get("critical_issues", 0) > 0:
+                    critical_findings.append({
+                        "protocol": protocol,
+                        "issue": f"{audit_data['critical_issues']} critical issues found",
+                        "severity": "critical"
+                    })
+                
+                # Calculate risk score
+                score = audit_data.get("score", 50)
+                risk_score = max(0, 10 - (score / 10))
+                risk_scores.append(risk_score)
+            else:
+                risk_scores.append(7.0)
+                critical_findings.append({
+                    "protocol": protocol,
+                    "issue": "No audit information available",
+                    "severity": "high"
+                })
+        
+        avg_risk = sum(risk_scores) / len(risk_scores) if risk_scores else 5.0
+        audit_summary = audit_service.get_audit_summary(audits)
+        
+        return {
+            "contract_risk_score": round(avg_risk, 2),
+            "audit_coverage": audit_summary["audit_coverage"],
+            "audited_protocols": audit_summary["audited_protocols"],
+            "unaudited_protocols": audit_summary["unaudited_protocols"],
+            "critical_findings": critical_findings,
+            "detailed_audits": audits,
+            "risk_level": self._score_to_risk_level(avg_risk)
+        }
+    
+    def _score_to_risk_level(self, score: float) -> str:
+        """Convert risk score to level"""
+        if score < 3:
+            return "low"
+        elif score < 6:
+            return "medium"
+        elif score < 8:
+            return "high"
+        else:
+            return "critical"
     
     def _calculate_concentration(self, assets: List[PortfolioAsset]) -> float:
-        """
-        Enhanced concentration risk with diversification bonus
-        Uses Herfindahl-Hirschman Index (HHI)
-        """
+        """Calculate concentration risk with HHI"""
         if not assets:
             return 0.0
         
-        # HHI: Sum of squared market shares
         hhi = sum((asset.percentage_of_portfolio / 100) ** 2 for asset in assets)
-        
-        # Convert to 0-100 scale (1.0 = 100% in one asset = max risk)
         base_score = hhi * 100
         
-        # Diversification bonus (Kelvin's input: min 3 assets is healthy)
         num_assets = len(assets)
         if num_assets >= 5:
-            diversity_bonus = 10  # Well diversified
+            diversity_bonus = 10
         elif num_assets >= 3:
-            diversity_bonus = 5   # Acceptable
+            diversity_bonus = 5
         else:
-            diversity_bonus = 0   # Too concentrated
+            diversity_bonus = 0
         
-        concentration_score = max(0, base_score - diversity_bonus)
-        
-        logger.debug(
-            f"Concentration: HHI={hhi:.3f}, Assets={num_assets}, "
-            f"Score={concentration_score:.2f}"
-        )
-        return round(concentration_score, 2)
+        return max(0, round(base_score - diversity_bonus, 2))
     
-    async def _calculate_liquidity(self, assets: List[PortfolioAsset]) -> float:
-        """
-        Enhanced liquidity risk using Kelvin's DEX liquidity tiers
-        """
+    def _calculate_liquidity_sync(self, assets: List[PortfolioAsset]) -> float:
+        """Synchronous liquidity calculation"""
         if not assets:
             return 0.0
         
-        # Liquidity tier scores (0-100, lower = more liquid)
         tier_scores = {
             "very_high": 5,
             "high": 15,
@@ -306,142 +334,71 @@ class RiskAgent:
         
         weighted_liquidity = 0
         for asset in assets:
-            # Get protocol liquidity tier
             protocol = asset.protocol
             if protocol and protocol.lower() in self.liquidity_tiers:
                 tier = self.liquidity_tiers[protocol.lower()]
                 asset_liquidity_score = tier_scores.get(tier, 75)
             else:
-                # No protocol info or unknown protocol
-                if asset.usd_value > self.thresholds["low_liquidity_usd"]:
-                    asset_liquidity_score = 40  # Assume decent if large holding
-                else:
-                    asset_liquidity_score = 70  # Small + unknown = risky
+                asset_liquidity_score = 40 if asset.usd_value > self.thresholds["low_liquidity_usd"] else 70
             
-            # Weight by portfolio percentage
             weight = asset.percentage_of_portfolio / 100
             weighted_liquidity += asset_liquidity_score * weight
         
-        logger.debug(f"Liquidity risk score: {weighted_liquidity:.2f}")
         return round(weighted_liquidity, 2)
     
-    async def _calculate_volatility(self, assets: List[PortfolioAsset]) -> float:
-        """
-        Enhanced volatility calculation
-        TODO Week 3: Use actual historical price data
-        """
-        # Asset type volatility profiles (0-100 scale)
+    def _calculate_volatility_sync(self, assets: List[PortfolioAsset]) -> float:
+        """Synchronous volatility calculation"""
         volatility_profiles = {
-            # Stablecoins - very low vol
-            "USDC": 3,
-            "USDT": 3,
-            "DAI": 5,
-            "FRAX": 8,
-            
-            # Blue chips - low to moderate
-            "BTC": 30,
-            "ETH": 35,
-            "WETH": 35,
-            
-            # L2 tokens - moderate
-            "mETH": 40,
-            "MNT": 55,
-            "OP": 50,
-            "ARB": 50,
-            
-            # DeFi tokens - higher
-            "MOE": 65,    # Merchant Moe token
-            "FUSION": 65, # FusionX token
-            
-            # Unknown - assume high
+            "USDC": 3, "USDT": 3, "DAI": 5,
+            "BTC": 30, "ETH": 35, "WETH": 35,
+            "mETH": 40, "MNT": 55,
+            "MOE": 65, "FUSION": 65,
             "UNKNOWN": 70
         }
         
         weighted_vol = 0
         for asset in assets:
-            vol_score = volatility_profiles.get(
-                asset.token_symbol.upper(), 
-                volatility_profiles["UNKNOWN"]
-            )
+            vol_score = volatility_profiles.get(asset.token_symbol.upper(), 70)
             weight = asset.percentage_of_portfolio / 100
             weighted_vol += vol_score * weight
         
-        logger.debug(f"Volatility score: {weighted_vol:.2f}")
         return round(weighted_vol, 2)
     
-    async def _calculate_contract_risk(self, assets: List[PortfolioAsset]) -> float:
-        """
-        Enhanced contract risk using Kelvin's protocol tiers
-        """
+    def _calculate_contract_risk_sync(self, assets: List[PortfolioAsset]) -> float:
+        """Synchronous contract risk calculation"""
         if not assets:
             return 0.0
         
         weighted_contract_risk = 0
+        safe_tokens = ["USDC", "USDT", "DAI", "WETH", "mETH", "MNT", "BTC", "ETH"]
         
         for asset in assets:
-            # Determine protocol tier
             protocol = asset.protocol
             if protocol and protocol.lower() in self.protocol_tiers:
                 tier = self.protocol_tiers[protocol.lower()]
                 asset_risk = self.protocol_risk_scores[tier]
+            elif asset.token_symbol.upper() in safe_tokens:
+                asset_risk = 10
             else:
-                # Check if it's a known safe token (held in wallet)
-                safe_tokens = ["USDC", "USDT", "DAI", "WETH", "mETH", "MNT", "BTC", "ETH"]
-                if asset.token_symbol.upper() in safe_tokens:
-                    asset_risk = 10  # Known token, low risk even without protocol
-                else:
-                    asset_risk = 80  # Unknown token + unknown protocol = high risk
+                asset_risk = 80
             
-            # Weight by portfolio percentage
             weight = asset.percentage_of_portfolio / 100
             weighted_contract_risk += asset_risk * weight
         
-        logger.debug(f"Contract risk score: {weighted_contract_risk:.2f}")
         return round(weighted_contract_risk, 2)
     
-    def _calculate_correlation_risk(
-        self, 
-        market_correlation: float
-    ) -> Tuple[float, str]:
-        """
-        NEW: Calculate correlation risk based on Kelvin's macro hypothesis
-        
-        From Kelvin's research:
-        - Correlation < 0.4: Healthy (capital rotating, selective)
-        - Correlation 0.4-0.7: Neutral (consolidating)
-        - Correlation > 0.7: Stressed (fear, herd behavior)
-        
-        Args:
-            market_correlation: Current market correlation (0-1)
-        
-        Returns:
-            (risk_score, market_condition)
-        """
+    def _calculate_correlation_risk(self, market_correlation: float) -> Tuple[float, str]:
+        """Calculate correlation risk"""
         if market_correlation < self.correlation_thresholds["healthy"]:
-            # Healthy market - low correlation risk
-            risk_score = 15
-            condition = "healthy_rotation"
-            
+            return 15.0, "healthy_rotation"
         elif market_correlation < self.correlation_thresholds["neutral"]:
-            # Neutral market - moderate correlation risk
-            risk_score = 40
-            condition = "neutral_consolidation"
-            
+            return 40.0, "neutral_consolidation"
         else:
-            # Stressed market - high correlation risk
-            # Scale from 70-100 based on how extreme
-            excess = (market_correlation - 0.7) / 0.3  # 0 to 1
-            risk_score = 70 + (excess * 30)
-            condition = "stressed_correlation"
-        
-        logger.debug(
-            f"Correlation risk: {risk_score:.2f} "
-            f"(correlation={market_correlation:.2f}, condition={condition})"
-        )
-        return round(risk_score, 2), condition
+            excess = (market_correlation - 0.7) / 0.3
+            return round(70 + (excess * 30), 2), "stressed_correlation"
     
     def _compute_overall_score(self, metrics: RiskMetrics) -> float:
-        """Weighted average of all risk factors"""
+        """Compute weighted overall score"""
         score = (
             metrics.concentration_score * self.weights["concentration"] +
             metrics.liquidity_score * self.weights["liquidity"] +
@@ -452,7 +409,7 @@ class RiskAgent:
         return round(score, 2)
     
     def _get_risk_level(self, score: float) -> RiskLevel:
-        """Convert numeric score to risk level"""
+        """Convert score to risk level"""
         if score < 30:
             return RiskLevel.LOW
         elif score < 50:
@@ -468,140 +425,46 @@ class RiskAgent:
         assets: List[PortfolioAsset],
         market_condition: str
     ) -> List[str]:
-        """
-        Enhanced recommendations with market context
-        """
+        """Generate recommendations"""
         recommendations = []
         
-        # Concentration recommendations
         if metrics.concentration_score > 60:
             top_asset = max(assets, key=lambda a: a.percentage_of_portfolio)
             recommendations.append(
                 f"⚠ Critical concentration: {top_asset.token_symbol} is "
                 f"{top_asset.percentage_of_portfolio:.1f}% of portfolio. "
-                f"Immediately diversify into 3-5 different assets to reduce risk."
+                f"Immediately diversify."
             )
         elif metrics.concentration_score > 40:
             recommendations.append(
-                "⚡ Moderate concentration detected. Consider spreading holdings "
-                "across more assets for better diversification."
+                "⚡ Moderate concentration detected. Consider diversifying."
             )
         
-        # Liquidity recommendations (with protocol context)
         if metrics.liquidity_score > 60:
-            low_liquidity_assets = [
-                a for a in assets 
-                if a.protocol and self.liquidity_tiers.get(a.protocol.lower()) in ["low", "medium"]
-            ]
-            if low_liquidity_assets:
-                protocols = ", ".join(set(a.protocol for a in low_liquidity_assets if a.protocol))
-                recommendations.append(
-                    f"💧 Low liquidity exposure on: {protocols}. "
-                    f"Consider moving to higher liquidity DEXs like Merchant Moe or FusionX."
-                )
+            recommendations.append(
+                "💧 Low liquidity exposure. Consider moving to higher liquidity DEXs."
+            )
         
-        # Volatility recommendations
         if metrics.volatility_score > 50:
             recommendations.append(
-                "📉 High volatility exposure. Add stablecoin allocation (USDC/USDT) "
-                "to buffer against sharp price movements."
+                "📉 High volatility. Add stablecoin allocation to buffer movements."
             )
         
-        # Contract risk recommendations (with protocol tiers)
         if metrics.contract_risk_score > 40:
-            risky_protocols = [
-                a.protocol for a in assets 
-                if a.protocol and self.protocol_tiers.get(a.protocol.lower()) == ProtocolRiskLevel.EMERGING
-            ]
-            if risky_protocols:
-                recommendations.append(
-                    f"🔒 Exposure to emerging protocols: {', '.join(set(risky_protocols))}. "
-                    f"Review audit status and consider established alternatives."
-                )
+            recommendations.append(
+                "🔒 Review protocol audit status and security."
+            )
         
-        # NEW: Correlation-based recommendations (Kelvin's hypothesis)
         if market_condition == "stressed_correlation":
             recommendations.append(
-                "🌊 Market shows high correlation (>0.7) - indicating fear/herd behavior. "
-                "Consider reducing overall risk exposure or increasing stable asset allocation. "
-                "High correlation periods often precede volatility."
+                "🌊 High market correlation indicates fear. Consider risk reduction."
             )
         elif market_condition == "healthy_rotation":
             recommendations.append(
-                "✅ Healthy market conditions (low correlation <0.4). "
-                "Capital is rotating selectively - good environment for strategic rebalancing."
+                "✅ Healthy market conditions. Good time for strategic rebalancing."
             )
         
-        # Default if all looks good
         if not recommendations:
-            recommendations.append(
-                "✅ Portfolio risk profile is healthy. Continue monitoring regularly. "
-                f"Market conditions: {market_condition.replace('_', ' ').title()}."
-            )
+            recommendations.append("✅ Portfolio risk profile is healthy.")
         
         return recommendations
-    
-    def _create_empty_risk_score(self) -> RiskScore:
-        """Return empty state for wallets with no assets"""
-        return RiskScore(
-            score=0.0,
-            level=RiskLevel.LOW,
-            factors={},
-            recommendations=["No assets detected in portfolio."],
-            market_condition="unknown",
-            timestamp=datetime.utcnow()
-        )
-
-
-# Test function with enhanced output
-async def test_enhanced_risk_agent():
-    """Test the enhanced risk agent"""
-    agent = RiskAgent()
-    
-    print("=" * 80)
-    print(" " * 25 + "ENHANCED RISK AGENT TEST")
-    print(" " * 20 + "(With Kelvin's Research Data)")
-    print("=" * 80)
-    
-    # Test different market correlation scenarios
-    scenarios = [
-        (0.3, "Healthy Market (Low Correlation)"),
-        (0.5, "Neutral Market (Moderate Correlation)"),
-        (0.8, "Stressed Market (High Correlation)")
-    ]
-    
-    for correlation, scenario_name in scenarios:
-        print(f"\n{'='*80}")
-        print(f"SCENARIO: {scenario_name}")
-        print(f"Market Correlation: {correlation:.2f}")
-        print("=" * 80)
-        
-        # Run analysis with different correlations
-        result = await agent.analyze_portfolio(
-            "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb",
-            market_correlation=correlation
-        )
-        
-        print(f"\n📊 Overall Risk: {result.level.value.upper()} ({result.score:.2f}/100)")
-        print(f"🌍 Market Condition: {result.market_condition.replace('_', ' ').title()}")
-        
-        print(f"\n📈 Risk Factor Breakdown:")
-        for factor, score in result.factors.items():
-            bars = "█" * int(score / 5)
-            print(f"  {factor.title():20s} {score:5.1f} {bars}")
-        
-        print(f"\n💡 Recommendations:")
-        for i, rec in enumerate(result.recommendations, 1):
-            print(f"  {i}. {rec}")
-    
-    print("\n" + "=" * 80)
-    print("Protocol Safety Tiers (from Kelvin's research):")
-    print("=" * 80)
-    for protocol, tier in agent.protocol_tiers.items():
-        risk_score = agent.protocol_risk_scores[tier]
-        print(f"  {protocol.title():20s} → {tier.value.title():15s} (Risk: {risk_score}/100)")
-
-
-if __name__ == "__main__":
-    import asyncio
-    asyncio.run(test_enhanced_risk_agent())
