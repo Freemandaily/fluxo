@@ -126,8 +126,10 @@ class AlertOrchestrator:
 			
             # Retrive all tracked Wallet
 			tracked_wallets = await self.redis.smembers('tracked_wallets')
+			print(tracked_wallets)
 			wallets_addresses = {address.decode() for address in tracked_wallets}
 			wallet_to_notify = set()
+			wallets_addresses = ['0x5C30940A4544cA845272FE97c4A27F2ED2CD7B64']
 			if wallets_addresses:
 				# Fetch the portfolio for each wallet
 				portfolio_task = [self.portfolio.analyze_portfolio(address) for address in wallets_addresses]

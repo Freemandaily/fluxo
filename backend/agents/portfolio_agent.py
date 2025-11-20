@@ -1,6 +1,7 @@
 from typing import List
 from core.config import REDIS_CONNECT
 from core.pubsub.channel_manager import ChannelNames
+from data_pipeline.pipeline import Pipeline
 
 class portfolio_agent:
     def __init__(self):
@@ -29,10 +30,11 @@ class portfolio_agent:
 
     
     async def analyze_portfolio(self,wallet_address:str)->List:
+        pipeline = Pipeline()
         """
             This is for demonstration purpose,  the actuall fetching should be from db not directly from source
         """
-        wallet_portfolio = await self.source.user_portfolio_analysis(wallet_address)
+        wallet_portfolio = await pipeline.user_portfolio(wallet_address)
         
         return wallet_portfolio
         

@@ -97,8 +97,8 @@ from agents.orchestrator import AlertOrchestrator
 async def main():
     
     event = {
-        'token':'0x38ncdhd',
-        "amount_usd" : 2000000,
+        'token':'0x375450706cb79aB749EBB90001bDa10341dD82BC',
+        "amount_usd" : 20000000,
         "from_address" :  '0xkksdi',
         "to_address" : '0Xwdhdjjsa',
         "transaction_hash" :  'ioiqnas',

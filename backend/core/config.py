@@ -111,6 +111,3 @@ def get_redis_connector():
     """Get Redis connector instance (lazy import to avoid circular dependency)"""
     from models.redis_connect import db_connector
     return db_connector
-
-# Legacy compatibility
-REDIS_CONNECT = None  # Use get_redis_connector() instead
