@@ -11,7 +11,7 @@ from enum import Enum
 from services.social_data_fetcher import SocialDataFetcher
 from services.sentiment_analyzer import SentimentAnalyzer
 
-logger = logging.getLogger(_name_)
+logger = logging.getLogger(__name__)
 
 
 class SentimentLevel(str, Enum):
@@ -256,6 +256,6 @@ async def test_social_agent():
     print("=" * 70)
 
 
-if _name_ == "__main__":
-    import asyncio
-    asyncio.run(test_social_agent())
+# if _name_ == "__main__":
+#     import asyncio
+#     asyncio.run(test_social_agent())

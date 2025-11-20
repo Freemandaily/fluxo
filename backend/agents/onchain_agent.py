@@ -1,14 +1,11 @@
-from typing import List
-
+from asyncio import tasks
+from turtle import delay
 from core.config import REDIS_CONNECT
 from core.pubsub.channel_manager import ChannelNames
-from services.data_pipeline import DataSource
 
 class onchain_agent:
     def __init__(self):
         self.redis_db = REDIS_CONNECT
-        self.source = DataSource()
-
     # Rceives onhain transfer data from (tasks.token_watcher_task.token_watcher.TokenWatcher)
     async def Receive_onchain_transfer(self):
         pubsub = self.redis_db.pubsub()
@@ -21,22 +18,23 @@ class onchain_agent:
             print(f"Received onchain transfer data: {data}")
             # Process the onchain transfer data as needed
 
-            """"
-                Whale threshold logic can be implemented here
-            """
+            whale_threshold = 100_000
+            if float(data['amount_usd']) < whale_threshold:
+                continue
+
+            from  tasks.alert_tasks import process_smart_money
+            # pushing to smart money process
+            process_smart_money.delay(data)
 
             # pubslish the whale data to other agents listening.
-            await self.redis_db.publish('whale_watch_channel', data)
+            await self.redis_db.publish(ChannelNames.WHALE_MOVEMENT, data)
         
 
     async def protocols(self):
         """
             This is for demonstration  the actuall fetching should be from db not directly from source
         """
-        protocols_data = await self.source.fetch_protocol_data()
-
-        return protocols_data
-
+        pass
 
 
 

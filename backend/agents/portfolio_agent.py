@@ -1,12 +1,10 @@
 from typing import List
 from core.config import REDIS_CONNECT
 from core.pubsub.channel_manager import ChannelNames
-from services.data_pipeline import DataSource
 
 class portfolio_agent:
     def __init__(self):
         self.redis_db = REDIS_CONNECT
-        self.source = DataSource()
         
 
     # Receives processed market data from market_agent
