@@ -23,6 +23,18 @@ import motor.motor_asyncio
 from pymongo import MongoClient
 from redis.asyncio import Redis
 
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# Social Media APIs
+TWITTER_API_KEY = os.getenv("TWITTER_API_KEY")
+
+# Validate critical keys
+if not TWITTER_API_KEY:
+    print("⚠  WARNING: TWITTER_API_KEY not set in .env")
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s : %(message)s"
