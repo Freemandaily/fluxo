@@ -16,14 +16,14 @@ class SocialDataFetcher:
     """Fetch social media data for sentiment analysis"""
     
     def __init__(self):
-        # API keys from environment
-        self.twitter_bearer_token = os.getenv("TWITTER_BEARER_TOKEN", "")
+        # UPDATE: Change to twitterapi.io key
+        self.twitter_api_key = os.getenv("TWITTER_API_KEY", "")  # Changed from TWITTER_BEARER_TOKEN
         self.reddit_client_id = os.getenv("REDDIT_CLIENT_ID", "")
         self.reddit_client_secret = os.getenv("REDDIT_CLIENT_SECRET", "")
-        
+    
     async def fetch_twitter_data(self, token_symbol: str, limit: int = 100) -> List[Dict]:
         """
-        Fetch tweets about a token
+        Fetch tweets about a token using twitterapi.io
         
         Args:
             token_symbol: Token symbol (e.g., "MNT", "ETH")
@@ -33,159 +33,104 @@ class SocialDataFetcher:
             List of tweet data
         """
         try:
-            # Twitter API v2 endpoint
-            query = f"${token_symbol} OR #{token_symbol} OR {token_symbol}"
-            url = "https://api.twitter.com/2/tweets/search/recent"
+            if not self.twitter_api_key:
+                logger.warning("Twitter API key not configured, using mock data")
+                return self._get_mock_twitter_data(token_symbol, limit)
+            
+            # Build search query
+            query = f"${token_symbol} OR #{token_symbol}"
+            
+            # Add common token names
+            token_names = {
+                "MNT": "Mantle Network",
+                "ETH": "Ethereum",
+                "BTC": "Bitcoin",
+                "mETH": "Mantle Staked ETH"
+            }
+            
+            if token_symbol in token_names:
+                query += f' OR "{token_names[token_symbol]}"'
+            
+            # Exclude spam
+            query += " -bot -airdrop -giveaway"
+            
+            # Calculate date range (last 24 hours)
+            end_date = datetime.now()
+            start_date = end_date - timedelta(days=1)
+            
+            # twitterapi.io endpoint
+            url = "https://api.twitterapi.io/twitter/search/advanced"
             
             headers = {
-                "Authorization": f"Bearer {self.twitter_bearer_token}"
+                "X-API-KEY": self.twitter_api_key
             }
             
             params = {
                 "query": query,
-                "max_results": min(limit, 100),
-                "tweet.fields": "created_at,public_metrics,author_id",
-                "expansions": "author_id"
+                "count": min(limit, 100),  # Max 100 per request
+                "section": "top",  # Get top tweets (most engagement)
+                "start_date": start_date.strftime("%Y-%m-%d"),
+                "end_date": end_date.strftime("%Y-%m-%d")
             }
             
+            logger.info(f"Fetching Twitter data for {token_symbol} (query: {query})")
+            
             async with aiohttp.ClientSession() as session:
-                async with session.get(url, headers=headers, params=params) as response:
+                async with session.get(url, headers=headers, params=params, timeout=30) as response:
                     if response.status == 200:
                         data = await response.json()
-                        tweets = self._process_twitter_response(data)
-                        logger.info(f"Fetched {len(tweets)} tweets for {token_symbol}")
+                        tweets = self._process_twitter_response_twitterapi(data)
+                        logger.info(f"✅ Fetched {len(tweets)} tweets for {token_symbol}")
                         return tweets
-                    else:
-                        logger.error(f"Twitter API error: {response.status}")
+                        
+                    elif response.status == 429:
+                        logger.warning("Twitter API rate limit hit, using mock data")
                         return self._get_mock_twitter_data(token_symbol, limit)
                         
+                    else:
+                        error_text = await response.text()
+                        logger.error(f"Twitter API error {response.status}: {error_text}")
+                        return self._get_mock_twitter_data(token_symbol, limit)
+                        
+        except asyncio.TimeoutError:
+            logger.error("Twitter API request timed out")
+            return self._get_mock_twitter_data(token_symbol, limit)
         except Exception as e:
             logger.error(f"Twitter fetch failed: {str(e)}")
             return self._get_mock_twitter_data(token_symbol, limit)
     
-    async def fetch_farcaster_data(self, token_symbol: str, limit: int = 50) -> List[Dict]:
+    def _process_twitter_response_twitterapi(self, data: Dict) -> List[Dict]:
         """
-        Fetch Farcaster casts about a token
+        Process twitterapi.io response format
         
         Args:
-            token_symbol: Token symbol
-            limit: Max number of casts
+            data: Response from twitterapi.io
             
         Returns:
-            List of cast data
+            Normalized tweet data
         """
-        try:
-            # Farcaster Hub API
-            url = "https://hub.farcaster.xyz:2281/v1/castsByMention"
-            
-            params = {
-                "fid": token_symbol,
-                "pageSize": limit
-            }
-            
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url, params=params) as response:
-                    if response.status == 200:
-                        data = await response.json()
-                        casts = self._process_farcaster_response(data, token_symbol)
-                        logger.info(f"Fetched {len(casts)} Farcaster casts for {token_symbol}")
-                        return casts
-                    else:
-                        logger.error(f"Farcaster API error: {response.status}")
-                        return self._get_mock_farcaster_data(token_symbol, limit)
-                        
-        except Exception as e:
-            logger.error(f"Farcaster fetch failed: {str(e)}")
-            return self._get_mock_farcaster_data(token_symbol, limit)
-    
-    async def fetch_reddit_data(self, token_symbol: str, limit: int = 50) -> List[Dict]:
-        """
-        Fetch Reddit posts about a token
-        
-        Args:
-            token_symbol: Token symbol
-            limit: Max number of posts
-            
-        Returns:
-            List of Reddit post data
-        """
-        try:
-            # Reddit API (using public JSON endpoint for now)
-            subreddits = ["CryptoCurrency", "defi", "ethereum", "cryptocurrency"]
-            all_posts = []
-            
-            async with aiohttp.ClientSession() as session:
-                for subreddit in subreddits:
-                    url = f"https://www.reddit.com/r/{subreddit}/search.json"
-                    params = {
-                        "q": token_symbol,
-                        "limit": limit // len(subreddits),
-                        "sort": "new",
-                        "restrict_sr": "true"
-                    }
-                    
-                    headers = {
-                        "User-Agent": "FluxoBot/1.0"
-                    }
-                    
-                    async with session.get(url, params=params, headers=headers) as response:
-                        if response.status == 200:
-                            data = await response.json()
-                            posts = self._process_reddit_response(data)
-                            all_posts.extend(posts)
-                        else:
-                            logger.error(f"Reddit API error for r/{subreddit}: {response.status}")
-            
-            if all_posts:
-                logger.info(f"Fetched {len(all_posts)} Reddit posts for {token_symbol}")
-                return all_posts[:limit]
-            else:
-                return self._get_mock_reddit_data(token_symbol, limit)
-                
-        except Exception as e:
-            logger.error(f"Reddit fetch failed: {str(e)}")
-            return self._get_mock_reddit_data(token_symbol, limit)
-    
-    async def fetch_all_platforms(self, token_symbol: str) -> Dict[str, List[Dict]]:
-        """
-        Fetch data from all platforms concurrently
-        
-        Args:
-            token_symbol: Token symbol
-            
-        Returns:
-            Dictionary with data from all platforms
-        """
-        tasks = [
-            self.fetch_twitter_data(token_symbol, 100),
-            self.fetch_farcaster_data(token_symbol, 50),
-            self.fetch_reddit_data(token_symbol, 50)
-        ]
-        
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-        
-        return {
-            "twitter": results[0] if not isinstance(results[0], Exception) else [],
-            "farcaster": results[1] if not isinstance(results[1], Exception) else [],
-            "reddit": results[2] if not isinstance(results[2], Exception) else []
-        }
-    
-    # Helper methods for processing responses
-    
-    def _process_twitter_response(self, data: Dict) -> List[Dict]:
-        """Process Twitter API response"""
         tweets = []
-        if "data" in data:
-            for tweet in data["data"]:
-                tweets.append({
-                    "platform": "twitter",
-                    "text": tweet.get("text", ""),
-                    "created_at": tweet.get("created_at", ""),
-                    "author_id": tweet.get("author_id", ""),
-                    "likes": tweet.get("public_metrics", {}).get("like_count", 0),
-                    "retweets": tweet.get("public_metrics", {}).get("retweet_count", 0),
-                    "replies": tweet.get("public_metrics", {}).get("reply_count", 0)
-                })
+        
+        # twitterapi.io returns results in "results" key
+        results = data.get("results", [])
+        
+        for tweet in results:
+            # Extract user data
+            user_data = tweet.get("user", {})
+            
+            # Normalize to your format
+            tweets.append({
+                "platform": "twitter",
+                "text": tweet.get("text") or tweet.get("full_text", ""),
+                "created_at": tweet.get("created_at", ""),
+                "author_id": tweet.get("id_str", ""),
+                "author_name": user_data.get("screen_name", ""),
+                "author_followers": user_data.get("followers_count", 0),
+                "likes": tweet.get("favorite_count", 0),
+                "retweets": tweet.get("retweet_count", 0),
+                "replies": tweet.get("reply_count", 0)
+            })
+        
         return tweets
     
     def _process_farcaster_response(self, data: Dict, token_symbol: str) -> List[Dict]:
