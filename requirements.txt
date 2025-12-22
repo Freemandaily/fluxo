@@ -1,0 +1,13 @@
+uvicorn[standard]
+pydantic
+pydantic-settings
+celery
+redis
+anthropic
+openai
+web3
+httpx
+python-dotenv
+fastapi[standard]
+pymongo
+x402
