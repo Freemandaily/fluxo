@@ -104,7 +104,6 @@ app.include_router(whale_router, prefix="/agent/whale", tags=["Whale"])
 
 
 # NOTE: Payment middleware commented out for local development
-Uncomment for production deployment
 app.middleware("http")(
     require_payment(
         price="$0.01",
@@ -115,7 +114,7 @@ app.middleware("http")(
             url= "https://x402.treasure.lol/facilitator"
         ),
         # paywall_config=PaywallConfig(
-        #     cdp_client_key='uLcVSBfNYWEjvo4d9E7qbT5Vm3sj9xFe9UsGzH/cCKaytCOAHwwgx56jge78nLl0jgNnx9B8VqXL+k4ZAXk+AQ==',
+        #     cdp_client_key='==',
         #     app_name='fluxo',
         # )
     )
