@@ -9,30 +9,30 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
-# from x402.fastapi.middleware import require_payment
-# from x402.facilitator import FacilitatorConfig
+from x402.fastapi.middleware import require_payment
+from x402.facilitator import FacilitatorConfig
 
-# # from api.routes.onchain import user_subscribed_tokens_update
+# from api.routes.onchain import user_subscribed_tokens_update
 
-# # Import Routes
-# from api import (
-#     automation_router,
-#     execution_router,
-#     governance_router,
-#     macro_router,
-#     market_data_router,
-#     onchain_router,
-#     portfolio_router,
-#     research_router,
-#     risk_router,
-#     x402_router,
-#     yield_router,
-#     social_router,
-#     alerts_router,
-#     system_router,
-#     digest_router,
-#     whale_router
-# )
+# Import Routes
+from api import (
+    automation_router,
+    execution_router,
+    governance_router,
+    macro_router,
+    market_data_router,
+    onchain_router,
+    portfolio_router,
+    research_router,
+    risk_router,
+    x402_router,
+    yield_router,
+    social_router,
+    alerts_router,
+    system_router,
+    digest_router,
+    whale_router
+)
 
 # # Configure logging
 # logging.basicConfig(
@@ -41,29 +41,6 @@ from contextlib import asynccontextmanager
 # )
 # logger = logging.getLogger(__name__)
 
-# @asynccontextmanager
-# async def lifespan(app: FastAPI):
-#     # Startup
-#     print("🚀 Starting Redis listener for whale updates")
-#     from data_pipeline.pipeline import Pipeline
-#     from agents.automation_agent import automation_agent
-#     from agents.onchain_agent import onchain_agent
-
-#     pipe = Pipeline()
-#     agen = automation_agent()
-#     onch = onchain_agent()
-#     # listener = asyncio.create_task(pipe.watch_transfers())
-#     listener_1 = asyncio.create_task(agen.Receive_automation_data())
-#     listener_2 = asyncio.create_task(onch.Receive_onchain_transfer())
-#     # listener_task = asyncio.create_task(user_subscribed_tokens_update())
-
-#     yield
-
-#     # Shutdown
-#     # listener.cancel()
-#     listener_1.cancel()
-#     listener_2.cancel()
-#     print("🛑 Stopped Redis listener")
 
 # Initialize FastAPI app
 app = FastAPI(
