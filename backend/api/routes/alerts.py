@@ -21,7 +21,7 @@ router = APIRouter()
 # Initialize alert manager (in production, use dependency injection)
 
 
-@router.get("/alerts")
+@router.get("/fetch")
 async def get_alerts(
     wallet_address: Optional[str] = Query(None, description="Filter by wallet address"),
     limit: int = Query(50, ge=1, le=100, description="Number of alerts to return")
