@@ -37,7 +37,7 @@ async def get_alerts(
     alert_manager = AlertManager()
     try:
         alerts = await alert_manager.get_alerts(wallet_address, limit)
-        print(alerts)
+        
         return APIResponse(
             success=True,
             message=f"Retrieved {len(alerts)} alerts",
