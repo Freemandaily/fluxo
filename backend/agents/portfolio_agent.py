@@ -45,6 +45,7 @@ class portfolio_agent:
                 tracked_wallet = [none_track_address]
             
             for wallet_address in tracked_wallet:
+                
                 wallet_portfolio = await pipeline.user_portfolio(wallet_address.decode() if not none_track_address else wallet_address)
                 if not none_track_address:
                     asyncio.create_task(self._update_user_portfolio(wallet_address.decode(),wallet_portfolio))

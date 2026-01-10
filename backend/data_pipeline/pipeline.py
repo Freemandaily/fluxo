@@ -62,11 +62,11 @@ class Pipeline:
 
     # User portfolio in Mantle
     async def user_portfolio(self,wallet_address:str):
+        
         portfolio_data = await self.dune_service.user_portfolio_analysis(wallet_address)
         transformed_data = transform_user_portfolio(portfolio_data,wallet_address)
        
         if transformed_data:
-            "Determine if to cache user portfolio "
             return transformed_data
     
     # Token Balance

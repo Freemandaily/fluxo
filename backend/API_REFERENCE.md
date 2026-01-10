@@ -136,7 +136,6 @@ Confirm that an alert has been successfully delivered to the user.
 Get the list of all currently monitored wallets.
 
 *   **Endpoint:** `GET /api/alerts/fetch/tracked-wallets`
-*   **Parameters:** None
 
 **Response:**
 ```json
@@ -187,10 +186,8 @@ Fetches portfolio data including token holdings and protocol positions.
 ### 8. Get Portfolio Task Status
 Check the status of an asynchronous portfolio task.
 
-*   **Endpoint:** `GET /api/v1/agent/status/{task_id}`
-*   **Parameters:**
-    *   `task_id` (path, string, required): The ID returned by the portfolio endpoint.
-
+*   **Endpoint:** `GET /api/v1/agent/status/portfolio/{task_id}`
+*   
 **Response:**
 ```json
 {
@@ -224,9 +221,7 @@ Initiates a background task to find yield opportunities.
 Retrieve the results of the yield analysis.
 
 *   **Endpoint:** `GET /agent/yield/status/{task_id}`
-*   **Parameters:**
-    *   `task_id` (path, string, required): The ID returned by the yield endpoint.
-
+*   
 **Response:**
 ```json
 {
@@ -272,8 +267,6 @@ Starts an asynchronous job to fetch and analyze transactions.
 Retrieve transaction analysis results.
 
 *   **Endpoint:** `GET /api/agent/onchain/status/{task_id}`
-*   **Parameters:**
-    *   `task_id` (path, string, required): The ID returned by the transactions endpoint.
 
 **Response:**
 ```json
@@ -320,8 +313,6 @@ Initiates a deep risk analysis job for a wallet.
 Retrieve the detailed risk analysis report.
 
 *   **Endpoint:** `GET /api/agent/risk/status/{task_id}`
-*   **Parameters:**
-    *   `task_id` (path, string, required): The ID returned by the analyze endpoint.
 
 **Response:**
 ```json

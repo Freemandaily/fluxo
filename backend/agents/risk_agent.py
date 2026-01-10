@@ -15,6 +15,8 @@ from datetime import datetime, UTC,timezone
 import logging
 from pydantic import BaseModel
 from enum import Enum
+from dataclasses import asdict
+
 
 from core.config import get_mongo_connection
 
@@ -148,7 +150,9 @@ class RiskAgent:
             return {}
         try:
             # Extract wallet address
-            wallet_address = portfolio[0].get('user_address')
+            wallet_address = portfolio[0].user_address
+            portfolio = [asdict(item) for item in portfolio]
+
             
             # Mock assets for now
             assets = [
@@ -500,10 +504,10 @@ class RiskAgent:
         recommendations = []
         
         if metrics.concentration_score > 60:
-            top_asset = max(assets, key=lambda a: a.percentage_of_portfolio)
+            top_asset = max(assets, key=lambda a: a.get('percentage_of_portfolio'))
             recommendations.append(
-                f"⚠ Critical concentration: {top_asset.token_symbol} is "
-                f"{top_asset.percentage_of_portfolio:.1f}% of portfolio. "
+                f"⚠ Critical concentration: {top_asset.get('token_symbol')} is "
+                f"{top_asset.get('percentage_of_portfolio'):.1f}% of portfolio. "
                 f"Immediately diversify."
             )
         elif metrics.concentration_score > 40:

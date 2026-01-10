@@ -7,16 +7,19 @@ def transform_user_portfolio(user_portfolio_data:List,wallet_address)->List[User
         
     transformed_portfolio_data = []
     for token_balance in user_portfolio_data:
-        
-        transformed_portfolio_data.append(UserPortfolio(
-            user_address=wallet_address,
-            token_address=token_balance['token_address'],
-            token_symbol=token_balance['token_symbol'],
-            balance=token_balance['balance'],
-            value_usd=token_balance['value_usd'],
-            price_usd=token_balance['price_usd'],
-            percentage_of_portfolio=token_balance['percentage_of_portfolio']
-        ))
+        try:
+            transformed_portfolio_data.append(UserPortfolio(
+                user_address=wallet_address,
+                token_address=token_balance.get('token_address'),
+                token_symbol=token_balance.get('token_symbol'),
+                balance=token_balance.get('balance'),
+                value_usd=token_balance.get('value_usd'),
+                price_usd=token_balance.get('price_usd'),
+                percentage_of_portfolio=token_balance.get('percentage_of_portfolio')
+            ))
+        except Exception as e:
+            print(f"Error transforming token balance data: {e}")
+            continue
     
     return transformed_portfolio_data
 
