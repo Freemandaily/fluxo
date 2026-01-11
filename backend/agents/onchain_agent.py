@@ -30,10 +30,10 @@ class onchain_agent:
 
         """
         try:
-            cache_key = f"user_tx:{wallet_address}"
-            if cached_data := await self.redis_db.get(cache_key):
-                print('Using Cached Data')
-                return json.loads(cached_data)
+            # cache_key = f"user_tx:{wallet_address}"
+            # if cached_data := await self.redis_db.get(cache_key):
+            #     print('Using Cached Data')
+            #     return json.loads(cached_data)
 
             store_id = "transactions"
             transaction_collection = self.mongo['User_Transaction']
@@ -47,7 +47,7 @@ class onchain_agent:
                 user_transactions = await self.fetch_transaction_and_update_db(wallet_address) 
 
             # Cache the result in Redis for 10 minutes
-            await self.redis_db.setex(cache_key, 600, json.dumps(user_transactions, default=str))
+            # await self.redis_db.setex(cache_key, 600, json.dumps(user_transactions, default=str))
                 
             return user_transactions
         except Exception as e:

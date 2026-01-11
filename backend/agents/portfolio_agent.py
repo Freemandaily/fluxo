@@ -17,10 +17,10 @@ class portfolio_agent:
     # Receives processed market data from market_agent
     async def retrieve_portfolio_data(self,wallet_address:str):
         try:
-            cache_key = f"user_portfolio:{wallet_address}"
-            if cached_data := await self.redis_db.get(cache_key):
-                print('Using Cached Portfolio Data')
-                return json.loads(cached_data)
+            # cache_key = f"user_portfolio:{wallet_address}"
+            # if cached_data := await self.redis_db.get(cache_key):
+            #     print('Using Cached Portfolio Data')
+            #     return json.loads(cached_data)
 
             store_id = 'Portfolios'
             portfolio_collection = self.mongo['User_Portfolios']
@@ -36,7 +36,7 @@ class portfolio_agent:
             if user_portfolio:
                 # Convert to dicts for caching if they are dataclasses
                 data_to_cache = [asdict(item) if is_dataclass(item) else item for item in user_portfolio]
-                await self.redis_db.setex(cache_key, 600, json.dumps(data_to_cache, default=str))
+                # await self.redis_db.setex(cache_key, 600, json.dumps(data_to_cache, default=str))
 
             return user_portfolio  
         except Exception as e:
