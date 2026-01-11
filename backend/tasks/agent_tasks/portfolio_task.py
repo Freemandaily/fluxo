@@ -1,6 +1,6 @@
 import asyncio
 from typing import List
-from dataclasses import asdict
+from dataclasses import asdict,is_dataclass
 from core import celery_app
 
 # @celery_app.task
@@ -37,6 +37,6 @@ def fetch_portfolio(wallet_address:str)->list:
         portfolio_data = loop.run_until_complete(
             portfolio.retrieve_portfolio_data(wallet_address)
         )
-        return [asdict(item) for item in portfolio_data] if portfolio_data else []
+        return [asdict(item) if is_dataclass(item) else item for item in portfolio_data] if portfolio_data else []
     except Exception as e:
         print(f'There is an issue fetching Portfolio Data for Wallet {wallet_address}. Issue:{e}')

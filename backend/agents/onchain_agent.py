@@ -1,5 +1,6 @@
 import ast
 import asyncio
+import json
 from typing import List
 from core.config import get_mongo_connection, get_redis_connection
 from core.pubsub.channel_manager import ChannelNames
@@ -23,21 +24,30 @@ class onchain_agent:
         }
     async def retrieve_transcton_from_db(self,wallet_address:str,limit=None)->list:
         """
-        Retrieve the transaction from the db
-        Incase if the address is not among address monitored
-        Fetch the address Transaction and not save 
+            Retrieve User Transaction from db
+            Retrieve data if cached in redis
+            If not in db fetch from onchain and update db
+
         """
         try:
+            cache_key = f"user_tx:{wallet_address}"
+            if cached_data := await self.redis_db.get(cache_key):
+                print('Using Cached Data')
+                return json.loads(cached_data)
+
             store_id = "transactions"
             transaction_collection = self.mongo['User_Transaction']
             users_transactions_datas = transaction_collection.find_one({"_id":store_id})
 
-            if not users_transactions_datas:
-                return []
-            
-            user_transactions = users_transactions_datas.get(wallet_address)
+            user_transactions = None
+            if users_transactions_datas:
+                user_transactions = users_transactions_datas.get(wallet_address)
+
             if not user_transactions:
                 user_transactions = await self.fetch_transaction_and_update_db(wallet_address) 
+
+            # Cache the result in Redis for 10 minutes
+            await self.redis_db.setex(cache_key, 600, json.dumps(user_transactions, default=str))
                 
             return user_transactions
         except Exception as e:

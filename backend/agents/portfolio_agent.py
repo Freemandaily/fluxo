@@ -1,8 +1,9 @@
 import asyncio
+import json
 from typing import List
 
 from datetime import datetime,timezone
-from dataclasses import asdict
+from dataclasses import asdict, is_dataclass
 from core.config import REDIS_CONNECT, get_mongo_connection, get_redis_connection
 from core.pubsub.channel_manager import ChannelNames
 from data_pipeline.pipeline import Pipeline
@@ -15,18 +16,29 @@ class portfolio_agent:
 
     # Receives processed market data from market_agent
     async def retrieve_portfolio_data(self,wallet_address:str):
-        store_id = 'Portfolios'
         try:
+            cache_key = f"user_portfolio:{wallet_address}"
+            if cached_data := await self.redis_db.get(cache_key):
+                print('Using Cached Portfolio Data')
+                return json.loads(cached_data)
+
+            store_id = 'Portfolios'
             portfolio_collection = self.mongo['User_Portfolios']
-            if ( users_portfolios_datas := portfolio_collection.find_one({"_id":store_id})
-                or {'null':'null'}
-            ):
+            users_portfolios_datas = portfolio_collection.find_one({"_id":store_id})
+
+            user_portfolio = None
+            if users_portfolios_datas:
                 user_portfolio = users_portfolios_datas.get(wallet_address)
-                if not user_portfolio:
-                    user_portfolio = await self.analyze_portfolio(wallet_address)
 
+            if not user_portfolio:
+                user_portfolio = await self.analyze_portfolio(wallet_address)
+                
+            if user_portfolio:
+                # Convert to dicts for caching if they are dataclasses
+                data_to_cache = [asdict(item) if is_dataclass(item) else item for item in user_portfolio]
+                await self.redis_db.setex(cache_key, 600, json.dumps(data_to_cache, default=str))
 
-                return user_portfolio  
+            return user_portfolio  
         except Exception as e:
             print(f'There is error in retrieving wallet {wallet_address} portfolio. isssue {e}')     
     
