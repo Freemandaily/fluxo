@@ -41,14 +41,11 @@ class Pipeline:
        
     # For mantle protocols
     async def mantle_protocols(self):
-        print('Started')
         protocol_data = await self.defillama.fetch_protocol_data()
         transformed_data =  transform_protocol_data(protocol_data)
-        # print(transformed_data)
         if transformed_data:
-            self.storeData.store_protocol_data(transformed_data,data_name="protocols")
-            # Save to db
-            pass
+            # self.storeData.store_protocol_data(transformed_data,data_name="protocols")
+            return transformed_data
            
             
     

@@ -32,7 +32,7 @@ class Defillama:
                         'tvl': data.get('chainTvls',{}).get('Mantle',0),
                         'category': data.get('category'),
                         'url': data.get('url'),
-                        'twitter': data.get('twitter'),
+                        'twitter': 'https://x.com/' + data.get('twitter') if data.get('twitter') else None,
                     }
                     mantle_protocols.append(protocol_data)
             return mantle_protocols

@@ -14,36 +14,36 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.post('/analyze')
-async def analyze_sentiment(
-    timeframe: str = "24h",
-    focus_tokens: Optional[List[str]] = None
-):
-    """
-    Start social sentiment analysis background task
+# @router.post('/analyze')
+# async def analyze_sentiment(
+#     timeframe: str = "24h",
+#     focus_tokens: Optional[List[str]] = None
+# ):
+#     """
+#     Start social sentiment analysis background task
     
-    Query params:
-    - timeframe: "1h", "24h", "7d" (default: "24h")
-    - focus_tokens: Optional list of tokens to focus on
+#     Query params:
+#     - timeframe: "1h", "24h", "7d" (default: "24h")
+#     - focus_tokens: Optional list of tokens to focus on
     
-    Returns task_id to check progress
-    """
-    try:
-        # Start background task
-        # task = social_task.delay(timeframe, focus_tokens)
+#     Returns task_id to check progress
+#     """
+#     try:
+#         # Start background task
+#         # task = social_task.delay(timeframe, focus_tokens)
         
-        return APIResponse(
-            success=True,
-            message="Sentiment analysis started",
-            data={
-                "task_id": 'This Endpoint is Disabled',
-                "status": "processing",
-                "timeframe": timeframe,
-                "check_status": f"/agent/social/status/{task.id}"
-            }
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to start task: {str(e)}")
+#         return APIResponse(
+#             success=True,
+#             message="Sentiment analysis started",
+#             data={
+#                 "task_id": 'This Endpoint is Disabled',
+#                 "status": "processing",
+#                 "timeframe": timeframe,
+#                 "check_status": f"/agent/social/status/{task.id}"
+#             }
+#         )
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=f"Failed to start task: {str(e)}")
 
 
 @router.get('/status/{task_id}')
@@ -93,34 +93,34 @@ async def get_social_status(task_id: str):
 
 
 
-@router.post('/sentiment')
-async def analyze_token_sentiment(
-    token_symbol: str = Query(..., description="Token symbol (e.g., MNT, ETH)"),
-    platforms: Optional[List[str]] = Query(None, description="Platforms to analyze")
-):
-    """
-    Analyze social sentiment for a specific token (synchronous)
+# @router.post('/sentiment')
+# async def analyze_token_sentiment(
+#     token_symbol: str = Query(..., description="Token symbol (e.g., MNT, ETH)"),
+#     platforms: Optional[List[str]] = Query(None, description="Platforms to analyze")
+# ):
+#     """
+#     Analyze social sentiment for a specific token (synchronous)
     
-    Query params:
-    - token_symbol: Token to analyze
-    - platforms: Optional list of platforms (twitter, farcaster, reddit)
+#     Query params:
+#     - token_symbol: Token to analyze
+#     - platforms: Optional list of platforms (twitter, farcaster, reddit)
     
-    Returns immediate sentiment analysis
-    """
-    try:
-        # from agents.social_agent import SocialAgent
+#     Returns immediate sentiment analysis
+#     """
+#     try:
+#         # from agents.social_agent import SocialAgent
         
-        # agent = SocialAgent(use_mock=False)
-        # result = await agent.analyze_sentiment(token_symbol, platforms)
+#         # agent = SocialAgent(use_mock=False)
+#         # result = await agent.analyze_sentiment(token_symbol, platforms)
         
-        return APIResponse(
-            success=True,
-            message=f"This endpoint is disabled",
-            # data=result
-        )
-    except Exception as e:
-        logger.error(f"Sentiment analysis failed: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+#         return APIResponse(
+#             success=True,
+#             message=f"This endpoint is disabled",
+#             # data=result
+#         )
+#     except Exception as e:
+#         logger.error(f"Sentiment analysis failed: {str(e)}")
+#         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get('/narratives/{token_symbol}')
@@ -153,33 +153,33 @@ async def get_trending_narratives(token_symbol: str):
 
 
 
-@router.get('/platforms/{token_symbol}')
-async def get_platform_breakdown(token_symbol: str):
-    """
-    Get sentiment breakdown by platform
+# @router.get('/platforms/{token_symbol}')
+# async def get_platform_breakdown(token_symbol: str):
+#     """
+#     Get sentiment breakdown by platform
     
-    Path param:
-    - token_symbol: Token to analyze
+#     Path param:
+#     - token_symbol: Token to analyze
     
-    Returns platform-specific sentiment analysis
-    """
-    try:
-        # from agents.social_agent import SocialAgent
+#     Returns platform-specific sentiment analysis
+#     """
+#     try:
+#         # from agents.social_agent import SocialAgent
         
-        # agent = SocialAgent(use_mock=False)
-        # breakdown = await agent.get_platform_breakdown(token_symbol)
+#         # agent = SocialAgent(use_mock=False)
+#         # breakdown = await agent.get_platform_breakdown(token_symbol)
         
-        return APIResponse(
-            success=True,
-            message=f"This endpoint is disabled",
-            # data={
-            #     "token_symbol": token_symbol,
-            #     "breakdown": breakdown
-            # }
-        )
-    except Exception as e:
-        logger.error(f"Failed to get platform breakdown: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+#         return APIResponse(
+#             success=True,
+#             message=f"This endpoint is disabled",
+#             # data={
+#             #     "token_symbol": token_symbol,
+#             #     "breakdown": breakdown
+#             # }
+#         )
+#     except Exception as e:
+#         logger.error(f"Failed to get platform breakdown: {str(e)}")
+#         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get('/supported-platforms')

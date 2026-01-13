@@ -22,6 +22,18 @@ class onchain_agent:
             "USDC": 2000000,
             "default": 100000
         }
+
+    async def protocols(self)->list:
+        """
+            Fetch Mantle Protocol from onchain agent
+        """
+        from data_pipeline.pipeline import Pipeline
+        pipeline = Pipeline()
+
+        protocol_data = await pipeline.mantle_protocols()
+        return protocol_data
+
+        
     async def retrieve_transcton_from_db(self,wallet_address:str,limit=None)->list:
         """
             Retrieve User Transaction from db

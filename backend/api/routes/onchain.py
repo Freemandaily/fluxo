@@ -76,6 +76,7 @@ async def onchain():
 
 
 @router.get('/protocols')
+@cache_endpoint(ttl=600)
 async def protocols():
     task = protocol_task.delay() # adding the background worker
     # logic

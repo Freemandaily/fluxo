@@ -1,5 +1,6 @@
 import asyncio
 from typing import List
+from dataclasses import asdict,is_dataclass
 
 from celery import shared_task
 from core import celery_app
@@ -26,7 +27,7 @@ def protocol_task()->bool:
     protocol_data = loop.run_until_complete(
         protocol.protocols()
     )
-
+    protocol_data = [ asdict(item) if is_dataclass(item) else item for item in protocol_data ]
     return protocol_data
 
 @shared_task
