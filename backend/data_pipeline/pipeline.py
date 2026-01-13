@@ -1,7 +1,7 @@
 import asyncio
 import json
 import logging
-from typing import AsyncIterator
+from typing import AsyncIterator, List
 from pydantic import BaseModel
 
 from core.pubsub.channel_manager import ChannelNames
@@ -11,6 +11,7 @@ from .ingestion.defi_llama import Defillama
 from .ingestion.dune_service import DuneService
 from .ingestion.mantle_api import MantleAPI
 
+from core.config import get_mongo_connection, get_redis_connection
 from .transformation.transform_defillam_data import transform_protocol_data,transform_yield_protocol
 from .transformation.transform_dune_data import transform_user_portfolio,transform_user_transaction_data
 from .transformation.transform_mantleApi_data import transform_balance
@@ -35,8 +36,8 @@ class Pipeline:
         
         self.storeData = StoreData()
 
-        redis_connector = db_connector(max_connections=5)
-        self.redis_db = redis_connector.get_connection()
+        self.mongo_db = get_mongo_connection()
+        self.redis_db = get_redis_connection()
        
     # For mantle protocols
     async def mantle_protocols(self):
@@ -95,12 +96,13 @@ class Pipeline:
                     transaction_hash='0xtest_hash',
                     block_number=123456
                 )
-                # async for transfer_data in self.mantle_api.tranfers_event():
-                    # print(transfer_data)
-                asyncio.create_task(self._token_watch_updater(transfer_data))
-                await asyncio.sleep(20)
+                async for transfer_data in self.mantle_api.tranfers_event():
+                    print(transfer_data)
+                    asyncio.create_task(self._token_watch_updater(transfer_data))
+                # await asyncio.sleep(20)
             except Exception as e:
                 logger.error(f"Error watching transfers: {e}")
+                print(f"Error watching transfers: {e}")
                 continue
 
     
@@ -127,6 +129,7 @@ class Pipeline:
         to_address = transfer_data.to_address
         transaction_hash = transfer_data.transaction_hash
         block_number = transfer_data.block_number
+        timestamp = transfer_data.timestamp
 
 
         update_data = {
@@ -136,14 +139,43 @@ class Pipeline:
             "to_address" : to_address,
             "transaction_hash" :  transaction_hash,
             "symbol" : token_symbol,
-            "block_number" :  block_number
+            "block_number" :  block_number,
+            'timestamp': timestamp
         }
 
-        # Publishing To Redis PubSub Channel
-        update_data = json.dumps(update_data)
-        await self.redis_db.publish(ChannelNames.ONCHAIN.value,update_data)
-        print(f"📢 Published transfer event to channel {ChannelNames.ONCHAIN.value}: {update_data}")
-   
+        # Store to MongoDB
+        if amount_usd <= 100000: # Whale Threshold
+            await self.store_transfer_data(update_data )
+        
+        # # Publishing To Redis PubSub Channel
+        # update_data = json.dumps(update_data)
+        # await self.redis_db.publish(ChannelNames.ONCHAIN.value,update_data)
+        # print(f"📢 Published transfer event to channel {ChannelNames.ONCHAIN.value}: {update_data}")
+
+    async def store_transfer_data(self,transfer_data:List[dict]):
+        if not transfer_data:
+            return
+
+        try:
+
+            store_id = 'Whale_Transfers'
+            whale_collection = self.mongo_db['Whale_Transfer_Data']
+            whale_collection.update_one(
+                {"_id":f"{store_id}"},
+                {
+                    "$push": {
+                        "data": transfer_data
+                    }
+                },
+                upsert=True
+            )
+            print('✅ Stored Whale Transfer Data')
+        except Exception as e:
+            print(f'There is an error storing whale transfer data. issue: {e}')
+
+
+            
+        
     async def fetch_transactions(self,wallet_address:str):
         if not wallet_address.startswith('0x'):
             return {
@@ -153,4 +185,3 @@ class Pipeline:
         transaction_data = await self.mantle_api.user_transactions(wallet_address)
         # transformed_data = transform_user_transaction_data(transaction_data)
         return transaction_data
-

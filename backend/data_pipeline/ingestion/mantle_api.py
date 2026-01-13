@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime,timezone
 import logging
 import aiohttp
 from typing import List,Optional,AsyncIterator
@@ -21,6 +21,7 @@ class TranferReponse(BaseModel):
     amount: int
     transaction_hash: str
     block_number: int
+    timestamp: str
 
 class MantleAPI:
     def __init__(self):
@@ -30,6 +31,7 @@ class MantleAPI:
         self.w3 = None
         self.web3 = AsyncWeb3(AsyncHTTPProvider(MANTLE_RPC_URL))
         self.settings =  Settings()
+        self.whale_thresholds = 100000
 
     # Fetch MNT user balance
     async def get_balance(self, address: str) -> float:
@@ -87,6 +89,8 @@ class MantleAPI:
             print(f"Subscribed to Transfer events with subscription ID: {self.subscription_id}")
 
             async for payload in w3.socket.process_subscriptions():
+                print(payload)
+
                 if payload.get("subscription") != self.subscription_id:
                         continue
                         
@@ -118,16 +122,20 @@ class MantleAPI:
             
             if isinstance(data, str):
                 data =  bytes.fromhex(data[2:] if data.startswith('0x') else data)
-        
+
             amount = decode(['uint256'], data)[0]
+            now_utc = datetime.now(timezone.utc)
             return TranferReponse(
                 token=to_checksum_address(log.get("address")),
                 from_address=from_address,
                 to_address=to_address,
                 amount=amount,
                 transaction_hash= "0x" + log.get("transactionHash").hex(),
-                block_number=log.get("blockNumber")
+                block_number=int(log.get("blockNumber")),
+                timestamp = str(now_utc)
             )
+            
+            
         except InsufficientDataBytes as e:
             logger.error(f"Error decoding event data: {e}")
             return None

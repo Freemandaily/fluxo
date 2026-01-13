@@ -11,8 +11,6 @@ router = APIRouter()
 
 @router.post('/track')
 async def track_whales(
-    timeframe: str = Query("24h", description="Time period (1h, 24h, 7d)"),
-    min_value_usd: float = Query(100000, description="Minimum transaction value")
 ):
     """
     Start whale tracking task
@@ -20,7 +18,7 @@ async def track_whales(
     Monitors large wallet movements and generates alerts
     """
     try:
-        task = whale_task.delay(timeframe, min_value_usd)
+        task = whale_task.delay()
         
         return APIResponse(
             success=True,
@@ -28,8 +26,6 @@ async def track_whales(
             data={
                 "task_id": task.id,
                 "status": "processing",
-                "timeframe": timeframe,
-                "min_value_usd": min_value_usd,
                 "check_status": f"/api/whale/status/{task.id}"
             }
         )
@@ -61,7 +57,7 @@ async def get_whale_status(task_id: str):
     )
 
 
-@router.get('/whale')
+@router.get('/health')
 async def whale_health():
     """Health check"""
     return {

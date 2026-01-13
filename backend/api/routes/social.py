@@ -3,7 +3,6 @@ Social Sentiment API Routes
 Enhanced with real data fetching
 """
 from fastapi import APIRouter, HTTPException, Query
-from tasks.agent_tasks import social_task
 from celery.result import AsyncResult
 from core import celery_app
 from api.models.schemas import APIResponse
@@ -31,13 +30,13 @@ async def analyze_sentiment(
     """
     try:
         # Start background task
-        task = social_task.delay(timeframe, focus_tokens)
+        # task = social_task.delay(timeframe, focus_tokens)
         
         return APIResponse(
             success=True,
             message="Sentiment analysis started",
             data={
-                "task_id": task.id,
+                "task_id": 'This Endpoint is Disabled',
                 "status": "processing",
                 "timeframe": timeframe,
                 "check_status": f"/agent/social/status/{task.id}"
@@ -52,34 +51,46 @@ async def get_social_status(task_id: str):
     """
     Get sentiment analysis task status and results
     """
+    
     task_result = AsyncResult(task_id, app=celery_app)
-    
-    response_data = {
-        'task_id': task_id,
-        'status': task_result.state.lower()
-    }
-    
-    if task_result.state == 'PENDING':
-        response_data['message'] = 'Task is queued'
+
+    try:
+        task_result = AsyncResult(task_id, app=celery_app)
         
-    elif task_result.state == 'PROCESSING':
-        info = task_result.info or {}
-        response_data['progress'] = info.get('progress', 0)
-        response_data['message'] = info.get('status', 'Processing...')
-        
-    elif task_result.state == 'SUCCESS':
-        response_data['result'] = task_result.result
-        response_data['message'] = 'Sentiment analysis completed'
-        
-    elif task_result.state == 'FAILURE':
-        response_data['error'] = str(task_result.info)
-        response_data['message'] = 'Analysis failed'
-    
-    return APIResponse(
-        success=True,
-        message="Task status retrieved",
-        data=response_data
-    )
+        if task_result.ready():
+            return APIResponse(
+                success=True,
+                message='Task completed',
+                data={
+                    'task_id': task_id,
+                    'status': 'completed',
+                    'result': task_result.result
+                }
+            )
+        elif task_result.failed():
+            return APIResponse(
+                success=False,
+                message='Task failed',
+                data={
+                    'task_id': task_id,
+                    'status': 'failed',
+                    'error': str(task_result.info)
+                }
+            )
+        else:
+            return APIResponse(
+                success=True,
+                message='Task in progress',
+                data={
+                    'task_id': task_id,
+                    'status': 'processing',
+                    'message': 'Transaction  fetching in progress...'
+                }
+            )
+    except Exception as e:
+        logger.error(f"Failed to get task status: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 
 @router.post('/sentiment')
@@ -97,15 +108,15 @@ async def analyze_token_sentiment(
     Returns immediate sentiment analysis
     """
     try:
-        from agents.social_agent import SocialAgent
+        # from agents.social_agent import SocialAgent
         
-        agent = SocialAgent(use_mock=False)
-        result = await agent.analyze_sentiment(token_symbol, platforms)
+        # agent = SocialAgent(use_mock=False)
+        # result = await agent.analyze_sentiment(token_symbol, platforms)
         
         return APIResponse(
             success=True,
-            message=f"Sentiment analysis completed for {token_symbol}",
-            data=result
+            message=f"This endpoint is disabled",
+            # data=result
         )
     except Exception as e:
         logger.error(f"Sentiment analysis failed: {str(e)}")
@@ -114,6 +125,9 @@ async def analyze_token_sentiment(
 
 @router.get('/narratives/{token_symbol}')
 async def get_trending_narratives(token_symbol: str):
+    if "$" not in token_symbol:
+        token_symbol = f"${token_symbol}"
+    from tasks.agent_tasks.social_task import social_task,social_narrative_task
     """
     Get trending narratives about a token
     
@@ -123,23 +137,20 @@ async def get_trending_narratives(token_symbol: str):
     Returns list of trending narratives
     """
     try:
-        from agents.social_agent import SocialAgent
-        
-        agent = SocialAgent(use_mock=False)
-        narratives = await agent.get_trending_narratives(token_symbol)
-        
+        task = social_narrative_task.delay(token_symbol)
         return APIResponse(
             success=True,
-            message=f"Retrieved trending narratives for {token_symbol}",
+            message=f"Narrative detection started for {token_symbol}",
             data={
-                "token_symbol": token_symbol,
-                "narratives": narratives,
-                "total_narratives": len(narratives)
+                'task_id': task.id,
+                'check_status': f"/agent/social/status/{task.id}"
             }
         )
+                
     except Exception as e:
         logger.error(f"Failed to get narratives: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 
 @router.get('/platforms/{token_symbol}')
@@ -153,18 +164,18 @@ async def get_platform_breakdown(token_symbol: str):
     Returns platform-specific sentiment analysis
     """
     try:
-        from agents.social_agent import SocialAgent
+        # from agents.social_agent import SocialAgent
         
-        agent = SocialAgent(use_mock=False)
-        breakdown = await agent.get_platform_breakdown(token_symbol)
+        # agent = SocialAgent(use_mock=False)
+        # breakdown = await agent.get_platform_breakdown(token_symbol)
         
         return APIResponse(
             success=True,
-            message=f"Platform breakdown for {token_symbol}",
-            data={
-                "token_symbol": token_symbol,
-                "breakdown": breakdown
-            }
+            message=f"This endpoint is disabled",
+            # data={
+            #     "token_symbol": token_symbol,
+            #     "breakdown": breakdown
+            # }
         )
     except Exception as e:
         logger.error(f"Failed to get platform breakdown: {str(e)}")

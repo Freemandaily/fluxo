@@ -47,7 +47,7 @@ class SocialAgent:
         self.use_mock = use_mock
         self.data_fetcher = SocialDataFetcher()
         self.sentiment_analyzer = SentimentAnalyzer()
-        
+        print("Connecting to Redis for caching...")
         # Redis cache connection
         try:
             self.redis_conn = get_redis_connection()
@@ -56,6 +56,7 @@ class SocialAgent:
             self.redis_conn = None
         
         self.sentiment_cache_key = "SOCIAL_SENTIMENT_CACHE"
+        self.trending_narratives_key = "SOCIAL_TRENDING_NARRATIVES"
         self.sentiment_cache_ttl = 3600  # 1 hour cache TTL
         
         # Narrative Keywords
@@ -66,7 +67,7 @@ class SocialAgent:
             "l2", "layer 2", "defi", "yield", "staking",
             "liquid staking", "tvl growth", "yield farming"
         ]
-        
+        print("SocialAgent initialized")
         logger.info(f"SocialAgent initialized (mock={use_mock})")
     
     async def analyze_sentiment(
@@ -129,6 +130,73 @@ class SocialAgent:
             logger.error(f"Sentiment analysis failed: {str(e)}")
             raise
     
+    async def analyze_narratives(self, token_symbol: str) -> Dict:
+        """
+        Analyze trending narratives for a token based on engagement
+        
+        Args:
+            token_symbol: Token symbol
+            
+        Returns:
+            Dict containing trending topics and recent tweets
+        """
+        if self.redis_conn:
+            try:
+                cached_result = await self.redis_conn.hget(self.trending_narratives_key, token_symbol)
+                if cached_result:
+                    return json.loads(cached_result)
+            except Exception as e:
+                print(f"Redis cache lookup failed: {e}. Proceeding with fresh analysis.")
+        
+        twitter_data = await self.data_fetcher.fetch_twitter_data(token_symbol)
+        
+        # Calculate trending topics based on engagement
+        scored_tweets = []
+
+        for tweet in twitter_data:
+            text = tweet.get("text", "")
+            likes = int(tweet.get("likes", 0) or 0)
+            retweets = int(tweet.get("retweets", 0) or 0)
+            replies = int(tweet.get("replies", 0) or 0)
+
+            # Engagement score (weighted)
+            score = likes + (retweets * 2) + (replies * 3)
+
+            if token_symbol.lower() in text.lower():
+                scored_tweets.append({
+                    "text": text,
+                    "score": score
+                })
+
+        scored_tweets.sort(key=lambda x: x["score"], reverse=True)
+        top_10_texts = scored_tweets[:10]
+        
+        # Get 5 most recent tweets sorted by creation date
+        recent_tweets = sorted(
+            twitter_data,
+            key=lambda x: x.get("created_at", ""),
+            reverse=True
+        )[:5]
+        
+        result = {
+            "trending_topics": top_10_texts,
+            "recent_tweets": recent_tweets
+        }
+        
+        # Cache result
+        if self.redis_conn:
+            try:
+                await self.redis_conn.hset(
+                    self.trending_narratives_key,
+                    token_symbol,
+                    json.dumps(result, default=str)
+                )
+                await self.redis_conn.expire(self.trending_narratives_key, 3600)
+            except Exception as e:
+                logger.warning(f"Failed to cache narratives: {e}")
+                
+        return result
+
     async def get_trending_narratives(self, token_symbol: str) -> List[Dict]:
         """
         Get trending narratives about a token
@@ -248,4 +316,3 @@ class SocialAgent:
             return SentimentLevel.BEARISH
         else:
             return SentimentLevel.VERY_BEARISH
-

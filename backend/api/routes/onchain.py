@@ -113,24 +113,6 @@ async def whale_whatcher(websocket: WebSocket):
         print(f"❌ User disconnected: {session_id}")
 
 
-# This function listens to Redis channel and forwards messages to connected websockets
-async def user_subscribed_tokens_update():
-    print("🔔 Starting smart Transfer Listener...")
-    pubsub = redis_db.pubsub()
-    await pubsub.subscribe(ChannelNames.SMART_MONEY.value)
-
-    async for message in pubsub.listen():
-        if message['type'] == 'message':
-            data = message['data']
-            # Match data for whale transfer pattern
-            # If metched Return data
-            for session_id, websocket in smart_money_session.items():
-                try:
-                    await websocket.send_text(data)
-                except Exception as e:
-                    print(f"Error sending message to {session_id}: {e}")
-                    continue
-
 
 @router.get('/transactions')
 @cache_endpoint(ttl=60)

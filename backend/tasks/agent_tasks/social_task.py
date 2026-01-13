@@ -23,7 +23,6 @@ def social_task(self,wallet_address :str=None, token_symbol: str=None, platforms
         print(f'Running social sentiment analysis for: {token_symbol if token_symbol else wallet_address}')
         
         
-        
         # Default platforms
         if platforms is None:
             platforms = ["twitter", "farcaster", "reddit"]
@@ -206,6 +205,41 @@ def social_task(self,wallet_address :str=None, token_symbol: str=None, platforms
         #     state='FAILURE',
         #     meta={'error': str(e)}
         # )
+        
+        return {
+            'status': 'failed',
+            'error': str(e),
+            'agent': 'social'
+        }
+
+
+@celery_app.task(bind=True, name="social_analysis")
+def social_narrative_task(self, token_symbol: str):
+    """
+    Social narrative trending analysis task
+    """
+    try:
+        print(f'Running social narrative analysis for: {token_symbol}')
+        
+        # Run async agent code
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        social_agent = SocialAgent()
+        print('Fetching narratives...')
+        narratives = loop.run_until_complete(social_agent.analyze_narratives(token_symbol))
+        loop.close()
+        
+        return {
+            'status': 'completed',
+            'token_symbol': token_symbol,
+            'narratives': narratives,
+            'agent': 'social',
+            'version': '2.0_narratives'
+        }
+        
+    except Exception as e:
+        print(f'Social narrative analysis failed: {str(e)}')
         
         return {
             'status': 'failed',

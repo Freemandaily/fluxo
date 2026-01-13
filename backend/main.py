@@ -12,7 +12,7 @@ from contextlib import asynccontextmanager
 from x402.fastapi.middleware import require_payment
 from x402.facilitator import FacilitatorConfig
 
-# from api.routes.onchain import user_subscribed_tokens_update
+
 # Import Routes
 from api import (
     automation_router,
@@ -29,7 +29,8 @@ from api import (
     social_router,
     alerts_router,
     system_router,
-    digest_router
+    digest_router,
+    whale_router
 )
 
 # Configure logging
@@ -44,24 +45,24 @@ logger = logging.getLogger(__name__)
 #     # Startup
 #     print("🚀 Starting Redis listener for whale updates")
 #     from data_pipeline.pipeline import Pipeline
-#     from agents.automation_agent import automation_agent
-#     from agents.onchain_agent import onchain_agent
+#     # from agents.automation_agent import automation_agent
+#     # from agents.onchain_agent import onchain_agent
 
 #     pipe = Pipeline()
-#     agen = automation_agent()
-#     onch = onchain_agent()
-#     # listener = asyncio.create_task(pipe.watch_transfers())
-#     listener_1 = asyncio.create_task(agen.Receive_automation_data())
-#     listener_2 = asyncio.create_task(onch.Receive_onchain_transfer())
+#     # agen = automation_agent()
+#     # onch = onchain_agent()
+#     listener = asyncio.create_task(pipe.watch_transfers())
+#     # listener_1 = asyncio.create_task(agen.Receive_automation_data())
+#     # listener_2 = asyncio.create_task(onch.Receive_onchain_transfer())
 #     # listener_task = asyncio.create_task(user_subscribed_tokens_update())
 
 #     yield
 
-#     # Shutdown
-#     # listener.cancel()
-#     listener_1.cancel()
-#     listener_2.cancel()
-#     print("🛑 Stopped Redis listener")
+    # Shutdown
+    # listener.cancel()
+    # listener_1.cancel()
+    # listener_2.cancel()
+    # print("🛑 Stopped Redis listener")
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -82,6 +83,7 @@ app.include_router(market_data_router,prefix='/agent',tags=['Market Data'])
 app.include_router(research_router,prefix='/agent',tags=['Research'])
 app.include_router(risk_router,prefix='/api/agent/risk',tags=['Risk'])
 app.include_router(x402_router,prefix='/agent',tags=['x402'])
+app.include_router(whale_router, prefix="/api/v1/whales", tags=["whales-update"])
 app.include_router(onchain_router,prefix='/api/agent/onchain',tags=['Onchain'])
 app.include_router(yield_router,prefix='/agent',tags=['Yield'])
 app.include_router(social_router,prefix='/agent',tags=['Social'])
@@ -124,6 +126,11 @@ async def health_check():
         "success": True,
         "status": "healthy"
     }
+
+# start whale watcher
+# from tasks.agent_tasks.whale_task import start_whale_tracker
+# task = start_whale_tracker.delay()
+# print(f"🚀 Starting Whale Watcher Task: {task.id}")
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8080, reload=True)

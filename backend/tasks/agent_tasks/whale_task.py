@@ -7,84 +7,46 @@ import asyncio
 from services.whale_tracker import WhaleTracker, DataSource
 
 @celery_app.task(bind=True, name="whale_tracking")
-def whale_task(self, timeframe: str = "24h", min_value_usd: float = 100_000):
+def whale_task(self):
     """
-    Background task for whale movement detection and alerts
-    
-    Args:
-        timeframe: Time period to analyze ("1h", "24h", "7d")
-        min_value_usd: Minimum transaction value to track
-    
-    Returns:
-        dict: Whale movements and triggered alerts
+    Celery task to fetch whale movements.
     """
+    
+    from agents.onchain_agent import onchain_agent
+    agent = onchain_agent()
+    
     try:
-        self.update_state(
-            state='PROCESSING',
-            meta={'status': 'Fetching whale movements...', 'progress': 0}
+        print("🚀 Starting Whale Watcher"  )
+        loop = asyncio.get_event_loop()
+
+        detect_whale =  loop.run_until_complete(
+            agent.detect_whale()
         )
-        
-        print(f'Running whale tracking (timeframe: {timeframe})')
-        
-        # Lazy import
-        from services.alert_manager import AlertManager
-        
-        # Initialize tracker
-        tracker = WhaleTracker(primary_source=DataSource.MOCK)
-        alert_manager = AlertManager()
-        
-        # Run async code
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
-        self.update_state(
-            state='PROCESSING',
-            meta={'status': 'Analyzing whale movements...', 'progress': 50}
-        )
-        
-        # Get whale movements
-        movements = loop.run_until_complete(
-            tracker.get_recent_movements(timeframe, min_value_usd)
-        )
-        
-        # Check for alerts
-        whale_alerts = loop.run_until_complete(
-            tracker.check_whale_alerts(movements)
-        )
-        
-        # Store alerts
-        for alert in whale_alerts:
-            alert_manager._store_alert(alert)
-        
-        loop.close()
-        
-        print(f'Whale tracking completed: {len(movements)} movements, {len(whale_alerts)} alerts')
-        
-        # Get summary
-        summary = tracker.get_summary(movements)
-        
-        return {
-            'status': 'completed',
-            'timeframe': timeframe,
-            'movements_detected': len(movements),
-            'alerts_triggered': len(whale_alerts),
-            'total_volume_usd': summary['total_volume_usd'],
-            'movements': [m.to_dict() for m in movements],
-            'alerts': [alert.to_dict() for alert in whale_alerts],
-            'summary': summary,
-            'agent': 'whale_tracker'
-        }
-        
+        if detect_whale:
+            print("✅ Whale movements detected and alerts generated.")
+            whale_data = detect_whale.get("data", {})
+            return "Whale tracking completed successfully."
+
     except Exception as e:
-        print(f'Whale tracking failed: {str(e)}')
         
-        self.update_state(
-            state='FAILURE',
-            meta={'error': str(e)}
+        print(f"❌ Whale tracking task failed: {e}")
+        return 
+
+@celery_app.task(bind=True, name="start_whale_tracker")
+def start_whale_tracker(self):
+    from data_pipeline.pipeline import Pipeline
+    pipe = Pipeline()
+    try:
+        print("🚀 Starting Whale Tracker Task"  )
+        loop = asyncio.get_event_loop()
+
+        watcher =  loop.run_until_complete(
+            pipe.watch_transfers()
         )
+        print("✅ Whale tracker is running.")
+        return "Whale tracker started successfully."
+
+    except Exception as e:
         
-        return {
-            'status': 'failed',
-            'error': str(e),
-            'agent': 'whale_tracker'
-        }
+        print(f"❌ Whale tracker task failed: {e}")
+        return

@@ -164,23 +164,17 @@ class onchain_agent:
             #     logger.error(f"❌ Whale detection failed: {str(e)}")
     
     # ADD YOUR WHALE DETECTION METHOD
-    async def detect_whale(self, transfer_data: dict) -> dict:
-        """Your whale detection logic"""
-        token = transfer_data.get("token", "")
-        amount_usd = float(transfer_data.get("amount_usd", 0))
+    async def detect_whale(self) -> dict:
+        """
+        Detect if a transfer is a whale movement based on predefined thresholds.
         
-        threshold = self.whale_thresholds.get(token, self.whale_thresholds["default"])
-        is_whale = amount_usd >= threshold
-        
-        return {
-            "is_whale": is_whale,
-            "amount_usd": amount_usd,
-            "threshold": threshold,
-            "token": token,
-            "summary": f"{'🐋 WHALE' if is_whale else '🐟 Regular'}: ${amount_usd:,.0f} {token}",
-            "timestamp": datetime.now(UTC).isoformat()
-        }
-    
-    
-    
+        Args:
+            transfer_data: The transfer data dictionary.
+        """
+        store_id = 'Whale_Transfers'
+        whale_collection = self.mongo['Whale_Transfer_Data']
+        whale_transfers = whale_collection.find_one({"_id":store_id})   
+
+        return whale_transfers if whale_transfers else {}
+
             
