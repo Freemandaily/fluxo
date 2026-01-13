@@ -47,7 +47,7 @@ class onchain_agent:
     async def fetch_transaction_and_update_db(self,query_wallet_address:str=None)->None:
         """
             Fetch Users Transaction Data And update the db with the Newest data 
-            query_wallet_addres denotes the address  searched from th frontend
+            query_wallet_addres denotes the address  searched from the frontend
             There is no need t store the transaction of a random address transaction searc in db
             We store only the transaction of the address we monitored for easier retrival
         """

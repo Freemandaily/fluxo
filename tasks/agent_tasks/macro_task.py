@@ -13,10 +13,10 @@ def macro_task(self, wallet_address: str = None):
     """
     try:
    
-        # self.update_state(
-        #     state='PROCESSING',
-        #     meta={'status': 'Fetching macro indicators...', 'progress': 0}
-        # )
+        self.update_state(
+            state='PROCESSING',
+            meta={'status': 'Fetching macro indicators...', 'progress': 0}
+        )
         
         print(f'Running macro analysis On: {wallet_address or "all"}')
         

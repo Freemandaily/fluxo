@@ -15,6 +15,7 @@ from datetime import datetime, UTC,timezone
 import logging
 from pydantic import BaseModel
 from enum import Enum
+from dataclasses import asdict
 
 from core.config import get_mongo_connection
 

@@ -1,8 +1,8 @@
-import time
-from fastapi.testclient import TestClient
-from backend.main import app
+# import time
+# from fastapi.testclient import TestClient
+# from backend.main import app
 
-client = TestClient(app)
+# client = TestClient(app)
 
 
 def test_portfolio():
@@ -47,9 +47,26 @@ def test_mantle_protocols():
         result = response.json()
     
 
+import asyncio
+from web3 import Web3,AsyncHTTPProvider,AsyncWeb3,WebSocketProvider
 
+
+transfer_event_signature = "Transfer(address,address,uint256)"
+tranfer_topic = [ AsyncWeb3.keccak(text=transfer_event_signature)]
     
+async def tranfers_event() :
+    
+    async with AsyncWeb3(WebSocketProvider('wss://mantle.drpc.org')) as w3:
+        
 
+        params = {
+            "address": '0x201EBa5CC46D216Ce6DC03F6a759e8E766e956aE',
+            "topics": [tranfer_topic]
+        }
+        subscription_id = await w3.eth.subscribe("logs", params)
+        print(f"Subscribed to Transfer events with subscription ID: {subscription_id}")
 
+        async for payload in w3.socket.process_subscriptions():
+            print(payload)
 
-test_mantle_protocols()
+asyncio.run(tranfers_event())

@@ -15,6 +15,7 @@ class portfolio_agent:
 
     # Receives processed market data from market_agent
     async def retrieve_portfolio_data(self,wallet_address:str):
+        print(f'Retrieving Portfolio Data for Wallet {wallet_address}')
         store_id = 'Portfolios'
         try:
             portfolio_collection = self.mongo['User_Portfolios']
