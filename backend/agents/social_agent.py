@@ -169,14 +169,14 @@ class SocialAgent:
                 })
 
         scored_tweets.sort(key=lambda x: x["score"], reverse=True)
-        top_10_texts = scored_tweets[:10]
+        top_10_texts = scored_tweets
         
         # Get 5 most recent tweets sorted by creation date
         recent_tweets = sorted(
             twitter_data,
             key=lambda x: x.get("created_at", ""),
             reverse=True
-        )[:5]
+        )
         
         result = {
             "trending_topics": top_10_texts,

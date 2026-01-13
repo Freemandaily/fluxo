@@ -93,21 +93,22 @@ app.include_router(system_router, prefix="/api/v1/system", tags=["system"])
 app.include_router(digest_router, prefix="/api/v1/daily", tags=["market-update"])
 
 
-app.middleware("http")(
-    require_payment(
-        price="$0.01",
-        pay_to_address='0xEd04925173FAD6A8e8939338ccF23244cae1fF12',
-        path='/api/v1/daily/digest',
-        network='base-sepolia',
-        facilitator_config=FacilitatorConfig(
-            url= "https://x402.treasure.lol/facilitator"
-        ),
-        # paywall_config=PaywallConfig(
-        #     cdp_client_key='uLcVSBfNYWEjvo4d9E7qbT5Vm3sj9xFe9UsGzH/cCKaytCOAHwwgx56jge78nLl0jgNnx9B8VqXL+k4ZAXk+AQ==',
-        #     app_name='fluxo',
-        # )
-    )
-)
+
+# app.middleware("http")(
+#     require_payment(
+#         price="$0.01",
+#         pay_to_address='0xEd04925173FAD6A8e8939338ccF23244cae1fF12',
+#         path='/api/v1/daily/digest',
+#         network='base-sepolia',
+#         facilitator_config=FacilitatorConfig(
+#             url= "https://x402.treasure.lol/facilitator"
+#         ),
+#         # paywall_config=PaywallConfig(
+#         #     cdp_client_key='uLcVSBfNYWEjvo4d9E7qbT5Vm3sj9xFe9UsGzH/cCKaytCOAHwwgx56jge78nLl0jgNnx9B8VqXL+k4ZAXk+AQ==',
+#         #     app_name='fluxo',
+#         # )
+#     )
+# )
 
 
 @app.get("/")
